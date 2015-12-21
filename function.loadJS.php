@@ -1,45 +1,79 @@
 <?php
 /**
- * Smarty loadJS plugin
- *
- * @package    Smarty
- * @subpackage PluginsFunction
- */
-
-/**
  * Smarty {loadJS} function plugin
+ * 
  * Type:     function<br>
  * Name:     loadJS<br>
  * Purpose:  include JS files using script tags (merge option available)
  *
- * @author Ole Koeckemann <ole.k@web.de>
- * @link   
+ * @author     Ole Koeckemann <ole.k@web.de>
+ * @link       https://github.com/ole1986/smarty-plugin-loadJS
+ * @package    Smarty
+ * @subpackage PluginsFunction
  *
- * 
- * @param array                    $params   parameters
- * @param Smarty_Internal_Template $template template object
+ * Smarty loadJS plugin
+ * Copyright (C) 2015  Ole Koeckemann
  *
- * @return string|null
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option)
+ * any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/**
+ * Singleton class 'LoadJS' used in Smarty template function 'loadJS'
  */
  class LoadJS {
+     /**
+      * instance of the current class
+      */
      protected static $_instance = null;
      
+     /**
+      * 
+      */
      public static $mergedFileFormat = "merged-%s.js";
      public static $mergedFile = null;
      
+     /**
+      * stores the location(s) of the js script files 
+      */
      private $location;
+     /**
+      * contains the output folder (esspacially for thed merged file)
+      */
      private $outputDir;
+     /**
+      * additional attributes being added to the <script> - tag
+      */
      private $attributes;
+     /**
+      * enables concatenate
+      */
      private $concatenate = false;
      
      private $scriptTag;
      
+     /**
+      * Constructor replacement used for singleton classes
+      */
      public static function getInstance(){
          if(self::$_instance === null)
             self::$_instance = new self;
          return self::$_instance;
      }
      
+     /**
+      * check if the merged js file is available in the given folder
+      */
      public static function IsMerged($outputDir){
          $found = glob($outputDir . sprintf(self::$mergedFileFormat, '*') );
          if(count($found) > 0)
@@ -49,6 +83,7 @@
          }
          return false;
      }
+     
     /**
      * disable cloning the object
      */
@@ -58,22 +93,38 @@
      */
     protected function __construct() {}
     
+    /**
+     * set the javascript files
+     * @params string|array
+     */
     public function SetLocation($l) {
         $this->location = (isset($l)) ? $l : null;
     }
     
+    /**
+     * set the output path for merged files
+     * @params string $d 
+     */
     public function SetOutputDir($d) {
         $this->outputDir = (isset($d)) ? $d : null;
     }
-    
+    /**
+     * enable or disable concatenate for the files defined in $this->location
+     * @params bool $b
+     */
     public function SetConcatenate($b) {
         $this->concatenate = $b;
     }
-    
+    /**
+     * set additional attributes added into <script> - tag
+     */
     public function SetAttributes($a){
          $this->attributes = (isset($a)) ? $a : '';
     }
     
+    /**
+     * remove the old merged-*.js docuement 
+     */
     private function cleanMergedFiles(){
         // remove all old merged files
         foreach(glob($this->outputDir . 'merged-*.js') as $f) {
@@ -122,7 +173,15 @@
         return $this->scriptTag;
     }
  }
- 
+
+/**
+ * smarty {loadJS} function call using the following parameters
+ *
+ * location   : string or array value to defined javascript files
+ * output     : the output path being used to store the merged file
+ * attr       : additinal HTMLÖ attributes for every <script> - tag (example: "async='true'")
+ * concatenate: enable of disable merged js
+ */
 function smarty_function_loadJS($params, $template)
 {
     $loadJS = LoadJS::getInstance();
