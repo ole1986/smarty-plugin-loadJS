@@ -1,7 +1,7 @@
 # Smarty 3.X Template plugin 'loadJS'
 
-This function template for Smarty v3.x is used to load javascript file dynamically
-It also supports combining all defined document into one merged file starting with `merged-[...].js` 
+This Smarty template function is used to dynamically load javascript file into HTML head lines
+It also supports combining all defined document into one single JS file starting with `merged-[...].js` using the parameter `concatenate=true`
 
 ### Installation
 
