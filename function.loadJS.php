@@ -15,21 +15,6 @@
  * @author Ole Koeckemann <ole.k@web.de>
  * @link   
  *
- * Example (template):
- * 
- * <head>
- * {* load all javascript files from a directory using php glob *}
- * {loadJS location='scripts/*.js' output='scripts/'}
- * {* load a list of js files and merge them into a single JS file 'merged-[...].js'*}
- * {loadJS location=['scripts/init.js', 'scripts/second.js'] output='scripts/' concatenate=true}
- * </head>
- * 
- * Example (php):
- * // check if a merged js file exists in an output folder
- * LoadJS::IsMerged('scripts/')
- * // get the merged file using static property 'mergedFile'
- * echo LoadJS::$mergedFile
- *
  * 
  * @param array                    $params   parameters
  * @param Smarty_Internal_Template $template template object
