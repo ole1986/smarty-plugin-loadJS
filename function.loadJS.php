@@ -32,17 +32,13 @@
  * Singleton class 'LoadJS' used in Smarty template function 'loadJS'
  */
  class LoadJS {
+     public static $mergedFileFormat = "%s-%s.js";
      /**
       * instance of the current class
       */
-     protected static $_instance = null;
+     private static $instances = [];
      
-     /**
-      * 
-      */
-     public static $mergedFileFormat = "merged-%s.js";
-     public static $mergedFile = null;
-     
+     private $name;
      /**
       * stores the location(s) of the js script files 
       */
@@ -60,83 +56,97 @@
       */
      private $concatenate = false;
      
+     private $unique = true;
+     
      private $scriptTag;
      
+     public $mergedFile = '';
+     
+     /**
+      * disable direct constructor call
+      */
+     protected function __construct($name) { 
+         $this->name = $name;
+     }
+
+     /**
+      * disable cloning the object
+      */
+     protected function __clone() {}
+        
      /**
       * Constructor replacement used for singleton classes
       */
-     public static function getInstance(){
-         if(self::$_instance === null)
-            self::$_instance = new self;
-         return self::$_instance;
+     public static function getInstance($name = null){
+         if(empty($name)) $name = 'loadjs';
+         
+         if(!isset(self::$instances[$name]))
+            self::$instances[$name] = new self($name);
+         return self::$instances[$name];
      }
-     
-     /**
-      * check if the merged js file is available in the given folder
-      */
-     public static function IsMerged($outputDir){
-         $found = glob($outputDir . sprintf(self::$mergedFileFormat, '*') );
-         if(count($found) > 0)
-         {
-             self::$mergedFile = $found[0];
-             return true;
-         }
-         return false;
-     }
-     
-    /**
-     * disable cloning the object
-     */
-    protected function __clone() {}
-    /**
-     * disable direct constructor call
-     */
-    protected function __construct() {}
-    
+        
     /**
      * set the javascript files
      * @params string|array
      */
     public function SetLocation($l) {
         $this->location = (isset($l)) ? $l : null;
+        return $this;
     }
     
     /**
      * set the output path for merged files
      * @params string $d 
      */
-    public function SetOutputDir($d) {
-        $this->outputDir = (isset($d)) ? $d : null;
+    public function SetOutputDir($path) {
+        $this->outputDir = (isset($path)) ? $path : null;
+        
+        if(is_dir($this->outputDir)) {
+            $this->fetchMergedFile();
+        }
+        return $this;
     }
+    
     /**
      * enable or disable concatenate for the files defined in $this->location
      * @params bool $b
      */
-    public function SetConcatenate($b) {
+    public function SetConcatenate($b, $unique) {
         $this->concatenate = $b;
+        $this->unique = $unique;
+        return $this;
     }
+    
     /**
      * set additional attributes added into <script> - tag
      */
     public function SetAttributes($a){
          $this->attributes = (isset($a)) ? $a : '';
+         return $this;
     }
     
     /**
      * remove the old merged-*.js docuement 
      */
-    private function cleanMergedFiles(){
-        // remove all old merged files
-        foreach(glob($this->outputDir . 'merged-*.js') as $f) {
-            
-            if(!empty(self::$mergedFile) && $f == self::$mergedFile) continue;
+    public function CleanUp(){
+        foreach(glob($this->outputDir . sprintf(self::$mergedFileFormat, $this->name, '*') ) as $f) {
+            if(!empty($this->mergedFile) && $f == $this->mergedFile) continue;
             unlink($f);
         }
     }
     
+    /**
+    * check if the merged js file is available in the given folder
+    */
+    private function fetchMergedFile(){
+        $found = glob($this->outputDir . sprintf(self::$mergedFileFormat, $this->name, '*') );
+        if(count($found) > 0)
+        $this->mergedFile = $found[0]; 
+    }
+    
     public function Load(){
         if(empty($this->location)) throw new Exception('Missing location. Please call SetLocation([...]) first');
-        if(empty($this->location)) throw new Exception('Missing OutputDir. Please call SetOutput([...]) first');
+        if(empty($this->outputDir)) throw new Exception('Missing OutputDir. Please call SetOutput([...]) first');
         
         $this->scriptTag = '';
         
@@ -155,20 +165,24 @@
         }
         
         if($this->outputDir && $this->concatenate) {
-            $shash = sha1($filesChanged);
-            self::$mergedFile = $this->outputDir . sprintf(self::$mergedFileFormat, $shash);
+            if($this->unique) {
+                $shash = substr(sha1($filesChanged), 0 , 20);
+                $this->mergedFile = $this->outputDir . sprintf(self::$mergedFileFormat, $this->name, $shash);
+            } else {
+                $this->mergedFile = $this->outputDir . sprintf(self::$mergedFileFormat, $this->name, 'latest');
+            }
             
-            if(!file_exists(self::$mergedFile)) {
-                $fp = fopen(self::$mergedFile, 'w');
+            if(!file_exists($this->mergedFile) || !$this->unique) {
+                $fp = fopen($this->mergedFile, 'w');
                 foreach($files as $f) {
                     fwrite($fp, file_get_contents($f));
                 }
                 fclose($fp);
             }
-            $this->scriptTag = "\n\t\t<script src=\"".self::$mergedFile."\" type=\"text/javascript\" {$this->attributes}></script>";
+            $this->scriptTag = "\n\t\t<script src=\"".$this->mergedFile."\" type=\"text/javascript\" {$this->attributes}></script>";
         }
         
-        $this->cleanMergedFiles();
+        $this->CleanUp();
         
         return $this->scriptTag;
     }
@@ -184,17 +198,20 @@
  */
 function smarty_function_loadJS($params, $template)
 {
-    $loadJS = LoadJS::getInstance();
-    
+    $n = (isset($params['name'])) ? $params['name'] : '';
     $l = (isset($params['location'])) ? $params['location'] : null;
     $o = (isset($params['output'])) ? $params['output'] : null;
+    
     $a = (isset($params['attr'])) ? $params['attr'] : null;
     $c = (isset($params['concatenate'])) ? $params['concatenate'] : null;
+    $u = (isset($params['unique'])) ? $params['unique'] : false;
+    
+    $loadJS = LoadJS::getInstance($n);
     
     $loadJS->SetLocation($l);
     $loadJS->SetOutputDir($o);
     $loadJS->SetAttributes($a);
-    $loadJS->SetConcatenate($c);
+    $loadJS->SetConcatenate($c, $u);
     
     return $loadJS->Load();
 }
